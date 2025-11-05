@@ -11,6 +11,7 @@ The workflow is divided into three main scripts:
 1. `npm run generate-tokens`
 2. `npm run generate-access-tokens`
 3. `npm run start`
+4. `npm run view-report`
 
 Each script builds on the output of the previous one to ensure the environment is correctly prepared before executing the main logic.
 
@@ -71,3 +72,15 @@ The `npm run start` command internally triggers the `k6 run` command with the sp
 
 ### **Usage**
 ```npm run start```
+
+## 3. `npm run view-report`
+
+### **Description**
+This command runs the **report launch** of the project located in the root directory with name index.html.
+  
+It is typically used to launch the report in the browser
+
+---
+
+### **Usage**
+```npm run view-report```

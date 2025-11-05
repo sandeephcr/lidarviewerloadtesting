@@ -102,7 +102,7 @@ export default function () {
 // -------------------------
 export function handleSummary(data) {
   return {
-    'summary.html': htmlReport(data),
+    'index.html': htmlReport(data),
     stdout: `
 ======= Response Time Summary (ms) =======
 Folder Structure - avg: ${data.metrics.Folder_Structure_ms.avg}, min: ${data.metrics.Folder_Structure_ms.min}, max: ${data.metrics.Folder_Structure_ms.max}
