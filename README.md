@@ -38,7 +38,7 @@ Before running any script, ensure the following are installed and configured:
 
 ---
 
-## 1. `npm run generate-tokens.js`
+## 1. `npm run generate-tokens`
 
 ### **Description**
 This script is responsible for generating or refreshing the base encrypted tokens used for login;  
@@ -46,12 +46,12 @@ This script is responsible for generating or refreshing the base encrypted token
 Typically, these are temporary or user-level tokens required before exchanging them for access tokens.
 
 ### **Usage**
-```npm run generate-tokens.js ```
+```npm run generate-tokens ```
 
 ##  2. `npm run generate-access-tokens`
 
 ### **Description**
-This script takes the tokens created by `generate-tokens.js` and exchanges them for **access tokens** by sending each one to the configured API endpoint.  
+This script takes the tokens created by `generate-tokens` and exchanges them for **access tokens** by sending each one to the configured API endpoint.  
 
 It is often used in test setups where tokens must be validated or converted before execution of automated tests.
 

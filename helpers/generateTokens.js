@@ -1,8 +1,7 @@
 import {credentialObject , encryptPayload, saveDataToJson} from './helpers.js'
-// let excelpath = '../UsersData1.xlsx'
 import path from 'path'
 
-let excelpath = path.join(process.cwd(), 'UsersData1.xlsx')
+let excelpath = path.join(process.cwd(), 'UsersData.xlsx')
 console.log(excelpath)
 
 
