@@ -73,11 +73,11 @@ The `npm run start` command internally triggers the `k6 run` command with the sp
 ### **Usage**
 ```npm run start```
 
-## 3. `npm run view-report`
+## 4. `npm run view-report`
 
 ### **Description**
 This command runs the **report launch** of the project located in the root directory with name index.html.
-  
+
 It is typically used to launch the report in the browser
 
 ---
