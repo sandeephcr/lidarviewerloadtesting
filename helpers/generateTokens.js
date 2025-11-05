@@ -2,7 +2,7 @@ import {credentialObject , encryptPayload, saveDataToJson} from './helpers.js'
 // let excelpath = '../UsersData1.xlsx'
 import path from 'path'
 
-let excelpath = path.join(process.cwd(), '../UsersData1.xlsx')
+let excelpath = path.join(process.cwd(), 'UsersData1.xlsx')
 console.log(excelpath)
 
 
@@ -26,8 +26,8 @@ async function getTokens() {
   return encryptedTokens; // now this is an array of resolved tokens, not promises
 };
 
-await saveDataToJson(await getTokens(), '../data', 'tokens.json')
-await saveDataToJson(usersData, '../data', 'users.json')
+await saveDataToJson(await getTokens(), 'data', 'tokens.json')
+await saveDataToJson(usersData, 'data', 'users.json')
 
 
 

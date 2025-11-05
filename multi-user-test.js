@@ -2,6 +2,7 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
+import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js'
 
 // -------------------------
 // Setup custom metrics
@@ -25,7 +26,7 @@ export const options = {
 // Load all tokens
 // -------------------------
 const tokenData = new SharedArray("accessTokens", function () {
-  return JSON.parse(open("./data/accessTokens.json"));
+  return JSON.parse(open("data/accessTokens.json"));
 });
 console.log("Toke data is", tokenData.length)
 
@@ -101,15 +102,17 @@ export default function () {
 // -------------------------
 export function handleSummary(data) {
   return {
+    'summary.html': htmlReport(data),
     stdout: `
 ======= Response Time Summary (ms) =======
 Folder Structure - avg: ${data.metrics.Folder_Structure_ms.avg}, min: ${data.metrics.Folder_Structure_ms.min}, max: ${data.metrics.Folder_Structure_ms.max}
-Points(50M)      - avg: ${data.metrics.Points_50M_ms.avg.toFixed(2)}, min: ${data.metrics.Points_50M_ms.min.toFixed(2)}, max: ${data.metrics.Points_50M_ms.max.toFixed(2)}
-Points(5M)       - avg: ${data.metrics.Points_5M_ms.avg.toFixed(2)}, min: ${data.metrics.Points_5M_ms.min.toFixed(2)}, max: ${data.metrics.Points_5M_ms.max.toFixed(2)}
-Points(10M)      - avg: ${data.metrics.Points_10M_ms.avg.toFixed(2)}, min: ${data.metrics.Points_10M_ms.min.toFixed(2)}, max: ${data.metrics.Points_10M_ms.max.toFixed(2)}
-PCD .dat         - avg: ${data.metrics.PCD_dat_ms.avg.toFixed(2)}, min: ${data.metrics.PCD_dat_ms.min.toFixed(2)}, max: ${data.metrics.PCD_dat_ms.max.toFixed(2)}
-Panorama         - avg: ${data.metrics.Panorama_ms.avg.toFixed(2)}, min: ${data.metrics.Panorama_ms.min.toFixed(2)}, max: ${data.metrics.Panorama_ms.max.toFixed(2)}
+Points(50M)      - avg: ${data.metrics.Points_50M_ms.avg}, min: ${data.metrics.Points_50M_ms.min}, max: ${data.metrics.Points_50M_ms.max}
+Points(5M)       - avg: ${data.metrics.Points_5M_ms.avg}, min: ${data.metrics.Points_5M_ms.min}, max: ${data.metrics.Points_5M_ms.max}
+Points(10M)      - avg: ${data.metrics.Points_10M_ms.avg}, min: ${data.metrics.Points_10M_ms.min}, max: ${data.metrics.Points_10M_ms.max}
+PCD .dat         - avg: ${data.metrics.PCD_dat_ms.avg}, min: ${data.metrics.PCD_dat_ms.min}, max: ${data.metrics.PCD_dat_ms.max}
+Panorama         - avg: ${data.metrics.Panorama_ms.avg}, min: ${data.metrics.Panorama_ms.min}, max: ${data.metrics.Panorama_ms.max}
 ==========================================
 `,
   };
 }
+

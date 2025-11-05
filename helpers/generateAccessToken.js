@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import { saveDataToJson } from './helpers.js';
 
 const tokensFile = './tokens.json';
-const tokens = JSON.parse(await fs.readFile(`../data/${tokensFile}`, 'utf-8'));
+const tokens = JSON.parse(await fs.readFile(`data/${tokensFile}`, 'utf-8'));
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // API endpoint
@@ -18,4 +18,4 @@ for (const token of tokens) {
   });
   responses.push(await res.json());
 }
-await saveDataToJson(responses, '../data', 'accessTokens.json')
+await saveDataToJson(responses, 'data', 'accessTokens.json')
