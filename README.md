@@ -8,7 +8,7 @@ This project automates the process of generating authentication tokens, converti
 
 The workflow is divided into three main scripts:
 
-1. `npm run generate-tokens.js`
+1. `npm run generate-tokens`
 2. `npm run generate-access-tokens`
 3. `npm run start`
 
@@ -34,6 +34,7 @@ Before running any script, ensure the following are installed and configured:
 - npm (comes bundled with Node.js)  
 - Network access to your test API endpoint (e.g., `https://testing.lidartechsolutions.com/api/login`)  
 - Proper `.env` file or environment variables (if required)
+- Install k6 in the machine under test
 
 ---
 
