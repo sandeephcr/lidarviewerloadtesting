@@ -34,6 +34,7 @@ Before running any script, ensure the following are installed and configured:
 - npm (comes bundled with Node.js)  
 - Network access to your test API endpoint (e.g., `https://testing.lidartechsolutions.com/api/login`)  
 - Proper `.env` file or environment variables (if required)
+- Install k6 in the machine under test
 
 ---
 
