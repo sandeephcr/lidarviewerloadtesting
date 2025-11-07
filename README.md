@@ -2,7 +2,7 @@
 LidarViewerLoadTesting
 
 
-# Token Generation & Load Testing Project
+# Load Testing
 
 This project automates the process of generating authentication tokens, converting them into access tokens, and then using those tokens to run performance or functional tests (e.g., via k6).  
 
