@@ -1,12 +1,12 @@
 {
   "summary": {
-    "total_iterations": 17,
-    "success": 22,
+    "total_iterations": 28,
+    "success": 33,
     "failures": 0,
     "success_rate": "100.00",
     "p95_login_time": "0.00",
     "total_vus": null,
-    "test_end_time": "2025-11-10T11:27:59.451Z"
+    "test_end_time": "2025-11-10T13:52:42.676Z"
   },
   "detailed_requests": []
 }
