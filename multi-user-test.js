@@ -4,7 +4,7 @@ import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-const DEFAULT_VUS = 60;
+const DEFAULT_VUS = 800;
 const DEFAULT_DURATION = "2m";
 
 export const options = {
@@ -23,6 +23,8 @@ const pcdDatTrend = new Trend("PCD_dat_ms");
 const panoramaTrend = new Trend("Panorama_jpg_ms");
 const measurementsPostTrend = new Trend("Measurements_POST_ms");
 const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
+const equipmentSizesTrend = new Trend("Equipment_Sizes_ms");
+
 
 
 // -------------------------
@@ -83,6 +85,10 @@ const ENDPOINTS = {
    filterRunsByLatLng:
   "https://testing.lidartechsolutions.com/api/filter_runs/lat_lng?lat=34.12710790205184&lng=-84.13815507646589&thresholdDistance=20",
 
+  equipmentSizes:
+  "https://testing.lidartechsolutions.com/api/loc/0/equipment_sizes/",
+
+
 };
 
 function uuidv4() {
@@ -134,41 +140,41 @@ export default function () {
   ]
 };
 
-  // 1️ Folder Structure
-  const r1 = http.get(ENDPOINTS.folderStructure, params);
-  recordTimings(r1);
-  folderStructureTrend.add(r1.timings.duration);
-  check(r1, { "Folder structure status": (r) => r.status === 200 });
+  // // 1️ Folder Structure
+  // const r1 = http.get(ENDPOINTS.folderStructure, params);
+  // recordTimings(r1);
+  // folderStructureTrend.add(r1.timings.duration);
+  // check(r1, { "Folder structure status": (r) => r.status === 200 });
 
-  // 2️ Points - Low Density
-  const r2 = http.get(ENDPOINTS.pointsLow, params);
-  recordTimings(r2);
-  pointsLowDensityTrend.add(r2.timings.duration);
-  check(r2, { "Points (low density)": (r) => r.status === 200 });
+  // // 2️ Points - Low Density
+  // const r2 = http.get(ENDPOINTS.pointsLow, params);
+  // recordTimings(r2);
+  // pointsLowDensityTrend.add(r2.timings.duration);
+  // check(r2, { "Points (low density)": (r) => r.status === 200 });
 
-  // 3️ Points - Medium Density
-  const r3 = http.get(ENDPOINTS.pointsMedium, params);
-  recordTimings(r3);
-  pointsMediumDensityTrend.add(r3.timings.duration);
-  check(r3, { "Points (medium density)": (r) => r.status === 200 });
+  // // 3️ Points - Medium Density
+  // const r3 = http.get(ENDPOINTS.pointsMedium, params);
+  // recordTimings(r3);
+  // pointsMediumDensityTrend.add(r3.timings.duration);
+  // check(r3, { "Points (medium density)": (r) => r.status === 200 });
 
-  // 4️ Points - High Density
-  const r4 = http.get(ENDPOINTS.pointsHigh, params);
-  recordTimings(r4);
-  pointsHighDensityTrend.add(r4.timings.duration);
-  check(r4, { "Points (high density)": (r) => r.status === 200 });
+  // // 4️ Points - High Density
+  // const r4 = http.get(ENDPOINTS.pointsHigh, params);
+  // recordTimings(r4);
+  // pointsHighDensityTrend.add(r4.timings.duration);
+  // check(r4, { "Points (high density)": (r) => r.status === 200 });
 
-  // 5️ PCD
-  const r5 = http.get(ENDPOINTS.pcdDat, params);
-  recordTimings(r5);
-  pcdDatTrend.add(r5.timings.duration);
-  check(r5, { "PCD - dat file": (r) => r.status === 200 });
+  // // 5️ PCD
+  // const r5 = http.get(ENDPOINTS.pcdDat, params);
+  // recordTimings(r5);
+  // pcdDatTrend.add(r5.timings.duration);
+  // check(r5, { "PCD - dat file": (r) => r.status === 200 });
 
-  // 6️ Panorama
-  const r6 = http.get(ENDPOINTS.panorama, params);
-  recordTimings(r6);
-  panoramaTrend.add(r6.timings.duration);
-  check(r6, { "Panorama - jpg file": (r) => r.status === 200 });
+  // // 6️ Panorama
+  // const r6 = http.get(ENDPOINTS.panorama, params);
+  // recordTimings(r6);
+  // panoramaTrend.add(r6.timings.duration);
+  // check(r6, { "Panorama - jpg file": (r) => r.status === 200 });
 
   // 7 Measurements
 
@@ -182,6 +188,7 @@ export default function () {
   measurementsPostTrend.add(r7.timings.duration);
   recordTimings(r7);
 
+  // 8 Search by Lat Long
 
   const r8 = http.get(ENDPOINTS.filterRunsByLatLng, params);
   recordTimings(r8);
@@ -190,6 +197,12 @@ export default function () {
   check(r8, {
     "Filter runs by lat/lng status 200": (r) => r.status === 200,
   });
+
+  // 9 Equipment Sizes
+  const r9 = http.get(ENDPOINTS.equipmentSizes, params);
+  recordTimings(r9);
+  equipmentSizesTrend.add(r9.timings.duration);
+  check(r9, { "Equipment Sizes status": (r) => r.status === 200 });
 
   sleep(1);
 }
