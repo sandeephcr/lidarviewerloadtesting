@@ -4,8 +4,8 @@ import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-const DEFAULT_VUS = 10;
-const DEFAULT_DURATION = "30s";
+const DEFAULT_VUS = 60;
+const DEFAULT_DURATION = "2m";
 
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
@@ -21,6 +21,9 @@ const pointsMediumDensityTrend = new Trend("Points_medium_density_ms");
 const pointsHighDensityTrend = new Trend("Points_high_density_ms");
 const pcdDatTrend = new Trend("PCD_dat_ms");
 const panoramaTrend = new Trend("Panorama_jpg_ms");
+const measurementsPostTrend = new Trend("Measurements_POST_ms");
+const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
+
 
 // -------------------------
 //  New Detailed Timing Trends
@@ -73,7 +76,22 @@ const ENDPOINTS = {
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Points/5455819325/6_20_5_0.dat",
   panorama:
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Panoramas/stream_00000055/0_1.jpg",
+  
+   measurementsPost:
+   "https://testing.lidartechsolutions.com/api/measurements/loc/1/Test-Oct30-3",
+
+   filterRunsByLatLng:
+  "https://testing.lidartechsolutions.com/api/filter_runs/lat_lng?lat=34.12710790205184&lng=-84.13815507646589&thresholdDistance=20",
+
 };
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 
 // -------------------------
@@ -84,11 +102,37 @@ export default function () {
   const params = buildParams(ACCESS_TOKEN);
 
   function recordTimings(res) {
+    
     // Add detailed timings for every request
+    // console.log(res.timings);
     requestSentTrend.add(res.timings.sending);
     waitingTrend.add(res.timings.waiting);
     contentDownloadTrend.add(res.timings.receiving);
   }
+
+  const measurementsPayload = {
+  measurements: [ 
+    {
+  "color": "#ffff00ff",
+  "type": "PtoPMeasurement",
+  "points": [
+    {
+      "ecef_x": 776007.5420944849,
+      "ecef_y": -5635007.876002115,
+      "ecef_z": 2875666.935376984,
+      "identifier": "start"
+    },
+    {
+      "ecef_x": 776006.0849716828,
+      "ecef_y": -5635010.927562357,
+      "ecef_z": 2875661.5331824166,
+      "identifier": "end"
+    }
+  ],
+  "uuid": uuidv4(),
+}
+  ]
+};
 
   // 1️ Folder Structure
   const r1 = http.get(ENDPOINTS.folderStructure, params);
@@ -126,9 +170,29 @@ export default function () {
   panoramaTrend.add(r6.timings.duration);
   check(r6, { "Panorama - jpg file": (r) => r.status === 200 });
 
+  // 7 Measurements
+
+  const r7 = http.post(
+  ENDPOINTS.measurementsPost,
+  JSON.stringify(measurementsPayload),
+  params
+  );
+
+  check(r7, { "Measurements POST status 200/201": (r) => r.status === 200 || r.status === 201 });
+  measurementsPostTrend.add(r7.timings.duration);
+  recordTimings(r7);
+
+
+  const r8 = http.get(ENDPOINTS.filterRunsByLatLng, params);
+  recordTimings(r8);
+  filterRunsTrend.add(r8.timings.duration);
+
+  check(r8, {
+    "Filter runs by lat/lng status 200": (r) => r.status === 200,
+  });
+
   sleep(1);
 }
-
 
 // -------------------------
 // Generate Report
