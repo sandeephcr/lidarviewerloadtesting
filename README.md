@@ -12,6 +12,8 @@ The workflow is divided into three main scripts:
 2. `npm run generate-access-tokens`
 3. `npm run start`
 4. `npm run view-report`
+5. `npm run connection-data-pool`
+
 
 Each script builds on the output of the previous one to ensure the environment is correctly prepared before executing the main logic.
 
@@ -84,3 +86,14 @@ It is typically used to launch the report in the browser
 
 ### **Usage**
 ```npm run view-report```
+
+
+## 5. `npm run connection-data-pool`
+
+### **Description**
+This command runs the the measures the requests sent to server based on the connection pooling feature
+
+---
+
+### **Usage**
+```npm run connection-data-pool```

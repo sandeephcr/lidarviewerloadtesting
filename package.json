@@ -8,6 +8,7 @@
     "generate-tokens": "node helpers/generateTokens.js ",
     "generate-access-tokens": "node helpers/generateAccessToken.js",
     "start": "cross-env K6_WEB_DASHBOARD=true k6 run multi-user-test.js",
+    "connection-data-pool": "node helpers/connectionDataPool.js",
     "view-report": "npx http-server -p 8080 -c-1 -o"
   },
   "author": "Sandeep Vedam",
