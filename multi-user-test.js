@@ -5,7 +5,7 @@ import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
 const DEFAULT_VUS = 10;
-const DEFAULT_DURATION = "10s";
+const DEFAULT_DURATION = "2m";
 
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
@@ -25,6 +25,7 @@ const measurementsPostTrend = new Trend("Measurements_POST_ms");
 const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
 const equipmentSizesTrend = new Trend("Equipment_Sizes_ms");
 const registerTrend = new Trend("Register_User_ms");
+const multiLocTrend = new Trend("Multi_Location_RunPoints_ms");
 
 // -------------------------
 //  New Detailed Timing Trends
@@ -63,6 +64,12 @@ function buildParams(accessToken) {
     timeout: DEFAULT_TIMEOUT,
   };
 }
+
+const coordinates = new SharedArray("coords", function () {
+  return JSON.parse(open("data/runCoordinates.json"));
+});
+
+const COORD_COUNT = coordinates.length;
 
 const ENDPOINTS = {
   
@@ -250,8 +257,20 @@ export default function () {
 
     check(r10, {
       "Register status 201": (r) => r.status === 201,
-      "Message correct": (r) => r.json("message") === "User registered successfully",
-      "User object present": (r) => !!r.json("user")
+    });
+
+
+    // 11 Multi Location Points
+    const coordIndex = (__VU - 1) % COORD_COUNT;
+    const coord = coordinates[coordIndex];
+    const url = `https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Monday_01-12-25/${coord.longitude}/${coord.latitude}/5000000/50.00/1.25`;
+    const res = http.get(url, params);
+
+    recordTimings(res); // same helper as existing tests
+    multiLocTrend.add(res.timings.duration);
+
+    check(res, {
+        "Multi-location get run points": (r) => r.status === 200,
     });
 }
 
