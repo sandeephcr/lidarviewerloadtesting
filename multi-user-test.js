@@ -4,8 +4,8 @@ import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-const DEFAULT_VUS = 10;
-const DEFAULT_DURATION = "2m";
+const DEFAULT_VUS = 400;
+const DEFAULT_DURATION = "10m";
 
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
@@ -26,7 +26,7 @@ const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
 const equipmentSizesTrend = new Trend("Equipment_Sizes_ms");
 const registerTrend = new Trend("Register_User_ms");
 const multiLocTrend = new Trend("Multi_Location_RunPoints_ms");
-
+const loginTrend = new Trend("Login_API_ms");
 // -------------------------
 //  New Detailed Timing Trends
 // -------------------------
@@ -64,12 +64,21 @@ function buildParams(accessToken) {
     timeout: DEFAULT_TIMEOUT,
   };
 }
-
+// Multi location get points
 const coordinates = new SharedArray("coords", function () {
   return JSON.parse(open("data/runCoordinates.json"));
 });
 
 const COORD_COUNT = coordinates.length;
+
+// login api
+const userData = new SharedArray("userData", function () {
+  return JSON.parse(open("./data/users.json")); // replace with your file
+});
+function getUserForVU(vuNumber) {
+  const idx = (vuNumber - 1) % userData.length; // loop if VUs > users
+  return userData[idx];
+}
 
 const ENDPOINTS = {
   
@@ -272,6 +281,28 @@ export default function () {
     check(res, {
         "Multi-location get run points": (r) => r.status === 200,
     });
+
+
+    // // 12 Login Api
+    // const user = getUserForVU(__VU);
+
+    // // Build payload: same as generate access tokens
+    // const payload = { data: user }; // user can be username/password or encrypted token
+
+    // console.log(`VU ${__VU} Iter ${__ITER} Login Payload:`, JSON.stringify(payload));
+
+    // const r12 = http.post(
+    //     "https://testing.lidartechsolutions.com/api/login",
+    //     JSON.stringify(payload),
+    //     { headers: { "Content-Type": "application/json" }, timeout: "60s" }
+    // );
+
+    // loginTrend.add(r12.timings.duration);
+
+    // check(r12, {
+    //     "Login status 200": (r) => r.status === 200,
+    //     "Access token present": (r) => !!r.json("accessToken"),
+    // });
 }
 
 // -------------------------
