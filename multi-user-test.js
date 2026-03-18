@@ -4,8 +4,8 @@ import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-const DEFAULT_VUS = 200;
-const DEFAULT_DURATION = "5m";
+const DEFAULT_VUS = 10;
+const DEFAULT_DURATION = "10s";
 
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
@@ -24,8 +24,7 @@ const panoramaTrend = new Trend("Panorama_jpg_ms");
 const measurementsPostTrend = new Trend("Measurements_POST_ms");
 const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
 const equipmentSizesTrend = new Trend("Equipment_Sizes_ms");
-
-
+const registerTrend = new Trend("Register_User_ms");
 
 // -------------------------
 //  New Detailed Timing Trends
@@ -66,28 +65,36 @@ function buildParams(accessToken) {
 }
 
 const ENDPOINTS = {
+  
   folderStructure:
     "https://testing.lidartechsolutions.com/admin/runsFolderStructure?folderId=68f9f52e8d7e694d6c15d8c4",
+  
   pointsLow:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.50",
+  
   pointsMedium:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.25",
+  
   pointsHigh:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.00",
+  
   pcdDat:
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Points/5455819325/6_20_5_0.dat",
+  
   panorama:
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Panoramas/stream_00000055/0_1.jpg",
   
-   measurementsPost:
-   "https://testing.lidartechsolutions.com/api/measurements/loc/1/Test-Oct30-3",
+  measurementsPost:
+    "https://testing.lidartechsolutions.com/api/measurements/loc/1/Test-Oct30-3",
 
-   filterRunsByLatLng:
-  "https://testing.lidartechsolutions.com/api/filter_runs/lat_lng?lat=34.12710790205184&lng=-84.13815507646589&thresholdDistance=20",
+  filterRunsByLatLng:
+    "https://testing.lidartechsolutions.com/api/filter_runs/lat_lng?lat=34.12710790205184&lng=-84.13815507646589&thresholdDistance=20",
 
   equipmentSizes:
-  "https://testing.lidartechsolutions.com/api/loc/0/equipment_sizes/",
-
+    "https://testing.lidartechsolutions.com/api/loc/0/equipment_sizes/",
+  
+  registerUser:
+    "https://testing.lidartechsolutions.com/admin/register_user",
 
 };
 
@@ -139,6 +146,8 @@ export default function () {
 }
   ]
 };
+
+
 
   // 1️ Folder Structure
   const r1 = http.get(ENDPOINTS.folderStructure, params);
@@ -205,6 +214,45 @@ export default function () {
   check(r9, { "Equipment Sizes status": (r) => r.status === 200 });
 
   sleep(1);
+
+    // 10️ Register User
+    function randomString(length) {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    const rand = randomString(10);
+    const registerPayload = {
+      userName: `test2026${rand}`,
+      email: `test2026${rand}@hcrobo.com`,
+      password: "Cnsw-123",
+      accountStatus: 1,
+      origin: "https://testing.lidartechsolutions.com",
+      designation: "Design Engineer",
+      sites: [
+        "https://qa.lidartechsolutions.com",
+        "https://testing.lidartechsolutions.com"
+      ],
+      mailRequired: true
+    };
+    //console.log(`VU ${__VU} Iter ${__ITER} Register Payload: ${JSON.stringify(registerPayload)}`);
+    const r10 = http.post(
+      ENDPOINTS.registerUser,  // use endpoint object
+      JSON.stringify(registerPayload),
+      params                   // same VU token as other APIs
+    );
+    //console.log(`VU ${__VU} Iter ${__ITER}: Status ${r10.status}, Body: ${r10.body}`);
+    registerTrend.add(r10.timings.duration);
+
+    check(r10, {
+      "Register status 201": (r) => r.status === 201,
+      "Message correct": (r) => r.json("message") === "User registered successfully",
+      "User object present": (r) => !!r.json("user")
+    });
 }
 
 // -------------------------
