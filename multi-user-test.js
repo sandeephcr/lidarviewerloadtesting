@@ -4,8 +4,8 @@ import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
 import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-const DEFAULT_VUS = 400;
-const DEFAULT_DURATION = "10m";
+const DEFAULT_VUS = 100;
+const DEFAULT_DURATION = "40s";
 
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
@@ -253,7 +253,7 @@ export default function () {
         "https://qa.lidartechsolutions.com",
         "https://testing.lidartechsolutions.com"
       ],
-      mailRequired: true
+      mailRequired: false
     };
     //console.log(`VU ${__VU} Iter ${__ITER} Register Payload: ${JSON.stringify(registerPayload)}`);
     const r10 = http.post(
@@ -283,26 +283,26 @@ export default function () {
     });
 
 
-    // // 12 Login Api
-    // const user = getUserForVU(__VU);
+    // 12 Login Api
+    const user = getUserForVU(__VU);
 
-    // // Build payload: same as generate access tokens
-    // const payload = { data: user }; // user can be username/password or encrypted token
+    // Build payload: same as generate access tokens
+    const payload = { data: user }; // user can be username/password or encrypted token
 
-    // console.log(`VU ${__VU} Iter ${__ITER} Login Payload:`, JSON.stringify(payload));
+    console.log(`VU ${__VU} Iter ${__ITER} Login Payload:`, JSON.stringify(payload));
 
-    // const r12 = http.post(
-    //     "https://testing.lidartechsolutions.com/api/login",
-    //     JSON.stringify(payload),
-    //     { headers: { "Content-Type": "application/json" }, timeout: "60s" }
-    // );
+    const r12 = http.post(
+        "https://testing.lidartechsolutions.com/api/login",
+        JSON.stringify(payload),
+        { headers: { "Content-Type": "application/json" }, timeout: "60s" }
+    );
 
-    // loginTrend.add(r12.timings.duration);
+    loginTrend.add(r12.timings.duration);
 
-    // check(r12, {
-    //     "Login status 200": (r) => r.status === 200,
-    //     "Access token present": (r) => !!r.json("accessToken"),
-    // });
+    check(r12, {
+        "Login status 200": (r) => r.status === 200,
+        "Access token present": (r) => !!r.json("accessToken"),
+    });
 }
 
 // -------------------------
