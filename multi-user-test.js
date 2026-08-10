@@ -2,117 +2,314 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 import { Trend } from "k6/metrics";
 import { SharedArray } from "k6/data";
-import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js'
+import { htmlReport } from 'https://raw.githubusercontent.com/benc-uk/k6-reporter/latest/dist/bundle.js';
 
-// -------------------------
-// Setup custom metrics
-// -------------------------
-const folderStructureTrend = new Trend("Folder_Structure_ms");
-const points50MTrend = new Trend("Points_50M_ms");
-const points5MTrend = new Trend("Points_5M_ms");
-const points10MTrend = new Trend("Points_10M_ms");
-const pcdDatTrend = new Trend("PCD_dat_ms");
-const panoramaTrend = new Trend("Panorama_ms");
+const DEFAULT_VUS = 400;
+const DEFAULT_DURATION = "10m";
 
-// -------------------------
-// K6 options
-// -------------------------
 export const options = {
-  vus: 400,         // 400 users
-  duration: "30s",  // each VU runs once
+  vus: __ENV.VUS ? parseInt(__ENV.VUS, 10) : DEFAULT_VUS,
+  duration: __ENV.DURATION || DEFAULT_DURATION,
 };
 
 // -------------------------
-// Load all tokens
+// Existing Metrics
+// -------------------------
+const folderStructureTrend = new Trend("Folder_Structure_ms");
+const pointsLowDensityTrend = new Trend("Points_low_density_ms");
+const pointsMediumDensityTrend = new Trend("Points_medium_density_ms");
+const pointsHighDensityTrend = new Trend("Points_high_density_ms");
+const pcdDatTrend = new Trend("PCD_dat_ms");
+const panoramaTrend = new Trend("Panorama_jpg_ms");
+const measurementsPostTrend = new Trend("Measurements_POST_ms");
+const filterRunsTrend = new Trend("Filter_runs_lat_lng_ms");
+const equipmentSizesTrend = new Trend("Equipment_Sizes_ms");
+const registerTrend = new Trend("Register_User_ms");
+const multiLocTrend = new Trend("Multi_Location_RunPoints_ms");
+const loginTrend = new Trend("Login_API_ms");
+// -------------------------
+//  New Detailed Timing Trends
+// -------------------------
+const requestSentTrend = new Trend("request_sent_ms");
+const waitingTrend = new Trend("waiting_response_ms");
+const contentDownloadTrend = new Trend("content_download_ms");
+
+
 // -------------------------
 const tokenData = new SharedArray("accessTokens", function () {
-  return JSON.parse(open("data/accessTokens.json"));
+  try {
+    return JSON.parse(open("./data/accessTokens.json"));
+  } catch (e) {
+    return JSON.parse(open("./data/tokentest.json"));
+  }
 });
-console.log("Toke data is", tokenData.length)
 
-// -------------------------
-// Default test function
-// -------------------------
-export default function () {
-  // Pick token based on VU number
-  // console.log("Before access token",__VU);  
-  const ACCESS_TOKEN = tokenData[__VU - 1].accessToken;
-  // console.log("Access token", tokenData[__VU - 1].accessToken);
-   console.log("After access token",__VU);  
-  const params = {
+const TOKEN_COUNT = tokenData.length;
+if (TOKEN_COUNT === 0) {
+  throw new Error("No access tokens found in token JSON files!");
+}
+
+function getTokenForVU(vuNumber) {
+  const idx = (vuNumber - 1) % TOKEN_COUNT;
+  return tokenData[idx].accessToken;
+}
+
+const DEFAULT_TIMEOUT = "60s";
+function buildParams(accessToken) {
+  return {
     headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
+    timeout: DEFAULT_TIMEOUT,
   };
+}
+// Multi location get points
+const coordinates = new SharedArray("coords", function () {
+  return JSON.parse(open("data/runCoordinates.json"));
+});
 
-  // 1️⃣ Folder Structure
-  let res1 = http.get(
+const COORD_COUNT = coordinates.length;
+
+// login api
+const userData = new SharedArray("userData", function () {
+  return JSON.parse(open("./data/users.json")); // replace with your file
+});
+function getUserForVU(vuNumber) {
+  const idx = (vuNumber - 1) % userData.length; // loop if VUs > users
+  return userData[idx];
+}
+
+const ENDPOINTS = {
+  
+  folderStructure:
     "https://testing.lidartechsolutions.com/admin/runsFolderStructure?folderId=68f9f52e8d7e694d6c15d8c4",
-    params
-  );
-  check(res1, { "Folder structure status 200": (r) => r.status === 200 });
-  folderStructureTrend.add(res1.timings.duration);
-
-  // 2️⃣ Points - low density
-  let res2 = http.get(
+  
+  pointsLow:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.50",
-    params
-  );
-  check(res2, { "Points(50M) status 200": (r) => r.status === 200 });
-  points50MTrend.add(res2.timings.duration);
-
-  // 3️⃣ Points - medium density
-  let res3 = http.get(
+  
+  pointsMedium:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.25",
-    params
-  );
-  check(res3, { "Points(5M) status 200": (r) => r.status === 200 });
-  points5MTrend.add(res3.timings.duration);
-
-  // 4️⃣ Points - high density
-  let res4 = http.get(
+  
+  pointsHigh:
     "https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Test-Oct30-3/-82.1599066812478/26.97407908939806/5000000/50.00/1.00",
-    params
-  );
-  check(res4, { "Points(10M) status 200": (r) => r.status === 200 });
-  points10MTrend.add(res4.timings.duration);
-
-  // 5️⃣ PCD Tile (.dat)
-  let res5 = http.get(
+  
+  pcdDat:
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Points/5455819325/6_20_5_0.dat",
-    params
-  );
-  check(res5, { ".dat Load status 200": (r) => r.status === 200 });
-  pcdDatTrend.add(res5.timings.duration);
-
-  // 6️⃣ Panorama Image
-  let res6 = http.get(
+  
+  panorama:
     "https://testing.lidartechsolutions.com/x/loc/Test-Oct30-3/Panoramas/stream_00000055/0_1.jpg",
-    params
+  
+  measurementsPost:
+    "https://testing.lidartechsolutions.com/api/measurements/loc/1/Test-Oct30-3",
+
+  filterRunsByLatLng:
+    "https://testing.lidartechsolutions.com/api/filter_runs/lat_lng?lat=34.12710790205184&lng=-84.13815507646589&thresholdDistance=20",
+
+  equipmentSizes:
+    "https://testing.lidartechsolutions.com/api/loc/0/equipment_sizes/",
+  
+  registerUser:
+    "https://testing.lidartechsolutions.com/admin/register_user",
+
+};
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+
+// -------------------------
+// Default Test function
+// -------------------------
+export default function () {
+  const ACCESS_TOKEN = getTokenForVU(__VU);
+  const params = buildParams(ACCESS_TOKEN);
+
+  function recordTimings(res) {
+    
+    // Add detailed timings for every request
+    // console.log(res.timings);
+    requestSentTrend.add(res.timings.sending);
+    waitingTrend.add(res.timings.waiting);
+    contentDownloadTrend.add(res.timings.receiving);
+  }
+
+  const measurementsPayload = {
+  measurements: [ 
+    {
+  "color": "#ffff00ff",
+  "type": "PtoPMeasurement",
+  "points": [
+    {
+      "ecef_x": 776007.5420944849,
+      "ecef_y": -5635007.876002115,
+      "ecef_z": 2875666.935376984,
+      "identifier": "start"
+    },
+    {
+      "ecef_x": 776006.0849716828,
+      "ecef_y": -5635010.927562357,
+      "ecef_z": 2875661.5331824166,
+      "identifier": "end"
+    }
+  ],
+  "uuid": uuidv4(),
+}
+  ]
+};
+
+
+
+  // 1️ Folder Structure
+  const r1 = http.get(ENDPOINTS.folderStructure, params);
+  recordTimings(r1);
+  folderStructureTrend.add(r1.timings.duration);
+  check(r1, { "Folder structure status": (r) => r.status === 200 });
+
+  // 2️ Points - Low Density
+  const r2 = http.get(ENDPOINTS.pointsLow, params);
+  recordTimings(r2);
+  pointsLowDensityTrend.add(r2.timings.duration);
+  check(r2, { "Points (low density)": (r) => r.status === 200 });
+
+  // 3️ Points - Medium Density
+  const r3 = http.get(ENDPOINTS.pointsMedium, params);
+  recordTimings(r3);
+  pointsMediumDensityTrend.add(r3.timings.duration);
+  check(r3, { "Points (medium density)": (r) => r.status === 200 });
+
+  // 4️ Points - High Density
+  const r4 = http.get(ENDPOINTS.pointsHigh, params);
+  recordTimings(r4);
+  pointsHighDensityTrend.add(r4.timings.duration);
+  check(r4, { "Points (high density)": (r) => r.status === 200 });
+
+  // 5️ PCD
+  const r5 = http.get(ENDPOINTS.pcdDat, params);
+  recordTimings(r5);
+  pcdDatTrend.add(r5.timings.duration);
+  check(r5, { "PCD - dat file": (r) => r.status === 200 });
+
+  // 6️ Panorama
+  const r6 = http.get(ENDPOINTS.panorama, params);
+  recordTimings(r6);
+  panoramaTrend.add(r6.timings.duration);
+  check(r6, { "Panorama - jpg file": (r) => r.status === 200 });
+
+  // 7 Measurements
+
+  const r7 = http.post(
+  ENDPOINTS.measurementsPost,
+  JSON.stringify(measurementsPayload),
+  params
   );
-  check(res6, { "Panorama .jpg status 200": (r) => r.status === 200 });
-  panoramaTrend.add(res6.timings.duration);
+
+  check(r7, { "Measurements POST status 200/201": (r) => r.status === 200 || r.status === 201 });
+  measurementsPostTrend.add(r7.timings.duration);
+  recordTimings(r7);
+
+  // 8 Search by Lat Long
+
+  const r8 = http.get(ENDPOINTS.filterRunsByLatLng, params);
+  recordTimings(r8);
+  filterRunsTrend.add(r8.timings.duration);
+
+  check(r8, {
+    "Filter runs by lat/lng status 200": (r) => r.status === 200,
+  });
+
+  // 9 Equipment Sizes
+  const r9 = http.get(ENDPOINTS.equipmentSizes, params);
+  recordTimings(r9);
+  equipmentSizesTrend.add(r9.timings.duration);
+  check(r9, { "Equipment Sizes status": (r) => r.status === 200 });
 
   sleep(1);
+
+    // 10️ Register User
+    function randomString(length) {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    const rand = randomString(10);
+    const registerPayload = {
+      userName: `test2026${rand}`,
+      email: `test2026${rand}@hcrobo.com`,
+      password: "Cnsw-123",
+      accountStatus: 1,
+      origin: "https://testing.lidartechsolutions.com",
+      designation: "Design Engineer",
+      sites: [
+        "https://qa.lidartechsolutions.com",
+        "https://testing.lidartechsolutions.com"
+      ],
+      mailRequired: true
+    };
+    //console.log(`VU ${__VU} Iter ${__ITER} Register Payload: ${JSON.stringify(registerPayload)}`);
+    const r10 = http.post(
+      ENDPOINTS.registerUser,  // use endpoint object
+      JSON.stringify(registerPayload),
+      params                   // same VU token as other APIs
+    );
+    //console.log(`VU ${__VU} Iter ${__ITER}: Status ${r10.status}, Body: ${r10.body}`);
+    registerTrend.add(r10.timings.duration);
+
+    check(r10, {
+      "Register status 201": (r) => r.status === 201,
+    });
+
+
+    // 11 Multi Location Points
+    const coordIndex = (__VU - 1) % COORD_COUNT;
+    const coord = coordinates[coordIndex];
+    const url = `https://testing.lidartechsolutions.com/api/get_run_points2/loc/1/Monday_01-12-25/${coord.longitude}/${coord.latitude}/5000000/50.00/1.25`;
+    const res = http.get(url, params);
+
+    recordTimings(res); // same helper as existing tests
+    multiLocTrend.add(res.timings.duration);
+
+    check(res, {
+        "Multi-location get run points": (r) => r.status === 200,
+    });
+
+
+    // // 12 Login Api
+    // const user = getUserForVU(__VU);
+
+    // // Build payload: same as generate access tokens
+    // const payload = { data: user }; // user can be username/password or encrypted token
+
+    // console.log(`VU ${__VU} Iter ${__ITER} Login Payload:`, JSON.stringify(payload));
+
+    // const r12 = http.post(
+    //     "https://testing.lidartechsolutions.com/api/login",
+    //     JSON.stringify(payload),
+    //     { headers: { "Content-Type": "application/json" }, timeout: "60s" }
+    // );
+
+    // loginTrend.add(r12.timings.duration);
+
+    // check(r12, {
+    //     "Login status 200": (r) => r.status === 200,
+    //     "Access token present": (r) => !!r.json("accessToken"),
+    // });
 }
 
 // -------------------------
-// Customize summary at end
+// Generate Report
 // -------------------------
 export function handleSummary(data) {
   return {
-    'index.html': htmlReport(data),
-    stdout: `
-======= Response Time Summary (ms) =======
-Folder Structure - avg: ${data.metrics.Folder_Structure_ms.avg}, min: ${data.metrics.Folder_Structure_ms.min}, max: ${data.metrics.Folder_Structure_ms.max}
-Points(50M)      - avg: ${data.metrics.Points_50M_ms.avg}, min: ${data.metrics.Points_50M_ms.min}, max: ${data.metrics.Points_50M_ms.max}
-Points(5M)       - avg: ${data.metrics.Points_5M_ms.avg}, min: ${data.metrics.Points_5M_ms.min}, max: ${data.metrics.Points_5M_ms.max}
-Points(10M)      - avg: ${data.metrics.Points_10M_ms.avg}, min: ${data.metrics.Points_10M_ms.min}, max: ${data.metrics.Points_10M_ms.max}
-PCD .dat         - avg: ${data.metrics.PCD_dat_ms.avg}, min: ${data.metrics.PCD_dat_ms.min}, max: ${data.metrics.PCD_dat_ms.max}
-Panorama         - avg: ${data.metrics.Panorama_ms.avg}, min: ${data.metrics.Panorama_ms.min}, max: ${data.metrics.Panorama_ms.max}
-==========================================
-`,
+    "index.html": htmlReport(data),
   };
 }
-
